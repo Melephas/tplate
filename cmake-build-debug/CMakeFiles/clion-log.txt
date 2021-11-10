@@ -1,0 +1,20 @@
+/app/extra/clion/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_DEPENDS_USE_COMPILER=FALSE -G "CodeBlocks - Unix Makefiles" /home/sam/code/c/tplate
+CMake Error at CMakeLists.txt:8 (find_package):
+  By not providing "Finddbuf.cmake" in CMAKE_MODULE_PATH this project has
+  asked CMake to find a package configuration file provided by "dbuf", but
+  CMake did not find one.
+
+  Could not find a package configuration file provided by "dbuf" with any of
+  the following names:
+
+    dbufConfig.cmake
+    dbuf-config.cmake
+
+  Add the installation prefix of "dbuf" to CMAKE_PREFIX_PATH or set
+  "dbuf_DIR" to a directory containing one of the above files.  If "dbuf"
+  provides a separate development package or SDK, be sure it has been
+  installed.
+
+
+-- Configuring incomplete, errors occurred!
+See also "/home/sam/code/c/tplate/cmake-build-debug/CMakeFiles/CMakeOutput.log".
