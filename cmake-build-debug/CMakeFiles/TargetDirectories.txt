@@ -1,3 +1,0 @@
-/home/sam/code/c/tplate/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/sam/code/c/tplate/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/sam/code/c/tplate/cmake-build-debug/CMakeFiles/tplate.dir

@@ -1,1 +1,0 @@
-/usr/bin/cc -g CMakeFiles/tplate.dir/src/main.c.o CMakeFiles/tplate.dir/src/project.c.o CMakeFiles/tplate.dir/src/directory.c.o CMakeFiles/tplate.dir/src/file.c.o -o tplate 
