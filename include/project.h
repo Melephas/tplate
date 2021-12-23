@@ -32,7 +32,7 @@ void project_destroy(project* project);
 
 // ==== Adding files and folders to the project ====
 
-// Sets the name of the project
+// Sets the name of the project, taking ownership of the string
 void project_set_name(project* p, string* name);
 // Add a file to the root of the project.
 void project_add_file(project* project, file* file);

@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(tplate C)
 
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
+
+set(PROJECT_VERSION 0.1.0)
+add_compile_definitions(PROJECT_VERSION="${PROJECT_VERSION}")
 
 if(DEBUG_LOG)
     add_compile_definitions(DEBUG_LOG)

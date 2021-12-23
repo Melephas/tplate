@@ -79,11 +79,20 @@ void project_generate_structure(project* p) {
         exit(EXIT_FAILURE);
     }
 
-    if (p->type == project_type_executable) {
-        generate_cmake_executable_project(p);
-    } else {
-        printf("Project type currently unsupported\n");
-        exit(EXIT_FAILURE);
+    switch (p->type) {
+        case project_type_executable:
+            generate_cmake_executable_project(p);
+            break;
+        case project_type_library:
+        case project_type_static_library:
+        case project_type_shared_library:
+            generate_cmake_library_project(p);
+            break;
+        case project_type_none:
+        default:
+            printf("Cannot generate a project with invalid type\n");
+            exit(EXIT_FAILURE);
+            break;
     }
 }
 
@@ -157,11 +166,24 @@ static file* generate_main_c(project* p) {
 static directory* generate_src_dir(project* p) {
     directory* src = directory_new();
     directory_set_name(src, string_from("src"));
-    directory_add_file(src, generate_main_c(p));
+
+    if (p->type == project_type_executable) {
+        directory_add_file(src, generate_main_c(p));
+    } else if (p->type != project_type_none) {
+        file* source_file = file_new();
+        string* file_name = string_duplicate(p->name);
+        string_append_cstring(file_name, ".c");
+        file_set_name(source_file, file_name);
+        string* file_contents = string_from("#include \"");
+        string_append_string(file_contents, p->name);
+        string_append_cstring(file_contents, ".h\"\n\nchar* hello() {\n\treturn \"Hello, World!\";\n}\n");
+        file_set_contents(source_file, file_contents);
+        directory_add_file(src, source_file);
+    }
     return src;
 }
 
-static file* generate_cmakelists_txt(project* p) {
+static file* generate_executable_cmakelists_txt(project* p) {
     file* cmakelists = file_new();
     file_set_name(cmakelists, string_from("CMakeLists.txt"));
     string* cmakelists_contents = string_from("cmake_minimum_required(VERSION 3.10)\nproject(");
@@ -173,14 +195,239 @@ static file* generate_cmakelists_txt(project* p) {
     return cmakelists;
 }
 
+static file* generate_library_cmakelists_txt(project* p) {
+    file* cmakelists = file_new();
+    file_set_name(cmakelists, string_from("CMakeLists.txt"));
+    string* cmakelists_contents = string_from(
+        "cmake_minimum_required(VERSION 3.13)\n"
+        "project("
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        " C)\n"
+        "\n"
+        "set(CMAKE_C_STANDARD 11)\n"
+        "\n"
+        "set(PROJECT_VERSION 0.1.0)\n"
+        "\n"
+        "set(SOURCES src/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        ".c)\n"
+        "\n"
+        "add_compile_options(\n"
+        "    -g\n"
+        ")\n"
+        "\n"
+        "add_library(\n"
+        "    "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        " SHARED\n"
+        "    ${SOURCES}\n"
+        ")\n"
+        "\n"
+        "add_library(\n"
+        "    "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Static STATIC\n"
+        "    ${SOURCES}\n"
+        ")\n"
+        "\n"
+        "set_target_properties("
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Static PROPERTIES OUTPUT_NAME "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        ")\n"
+        "\n"
+        "add_library("
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "::"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        " ALIAS "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        ")\n"
+        "add_library("
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "::"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "::Static ALIAS "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Static)\n"
+        "\n"
+        "target_include_directories(\n"
+        "    "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "\n"
+        "    PUBLIC\n"
+        "    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>\n"
+        "    $<INSTALL_INTERFACE:include>\n"
+        "    #    PUBLIC include\n"
+        ")\n"
+        "\n"
+        "target_include_directories(\n"
+        "    "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Static\n"
+        "    PUBLIC\n"
+        "    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>\n"
+        "    $<INSTALL_INTERFACE:include>\n"
+        ")\n"
+        "\n"
+        "include(GNUInstallDirs)\n"
+        "\n"
+        "install(\n"
+        "    TARGETS "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        " "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Static\n"
+        "    EXPORT "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Targets\n"
+        "    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}\n"
+        ")\n"
+        "\n"
+        "install(\n"
+        "    FILES\n"
+        "    include/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        ".h\n"
+        "    TYPE INCLUDE\n"
+        "    COMPONENT\n"
+        "    Devel\n"
+        ")\n"
+        "\n"
+        "install(\n"
+        "    EXPORT "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Targets\n"
+        "    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "\n"
+        "    NAMESPACE "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "::\n"
+        "    FILE "
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Targets.cmake\n"
+        ")\n"
+        "\n"
+        "include(CMakePackageConfigHelpers)\n"
+        "configure_package_config_file(\n"
+        "    \"cmake/Config.cmake.in\"\n"
+        "    \"cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Config.cmake\"\n"
+        "    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "\n"
+        "    PATH_VARS\n"
+        "    CMAKE_INSTALL_LIBDIR\n"
+        ")\n"
+        "\n"
+        "write_basic_package_version_file(\n"
+        "    ${CMAKE_CURRENT_BINARY_DIR}/cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "ConfigVersion.cmake\n"
+        "    VERSION ${PROJECT_VERSION}\n"
+        "    COMPATIBILITY SameMajorVersion\n"
+        ")\n"
+        "\n"
+        "install(\n"
+        "    FILES\n"
+        "    \"${CMAKE_CURRENT_BINARY_DIR}/cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "Config.cmake\"\n"
+        "    \"${CMAKE_CURRENT_BINARY_DIR}/cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "ConfigVersion.cmake\"\n"
+        "    DESTINATION\n"
+        "    \"${CMAKE_INSTALL_LIBDIR}/cmake/"
+    );
+    string_append_string(cmakelists_contents, p->name);
+    string_append_cstring(cmakelists_contents,
+        "\"\n"
+        ")");
+    file_set_contents(cmakelists, cmakelists_contents);
+    return cmakelists;
+}
+
+static directory* generate_include_dir(project* p) {
+    directory* ret = directory_new();
+    directory_set_name(ret, string_from("include"));
+    file* header = file_new();
+    string* header_name = string_duplicate(p->name);
+    string_append_cstring(header_name, ".h");
+    file_set_name(header, header_name);
+    file_set_contents(header, string_from(
+            "#pragma once\n\nchar* hello();\n"
+    ));
+    directory_add_file(ret, header);
+    return ret;
+}
+
 static void generate_cmake_executable_project(project* p) {
     project_add_directory(p, generate_cmake_dir(p));
     project_add_directory(p, generate_src_dir(p));
-    project_add_file(p, generate_cmakelists_txt(p));
+    project_add_file(p, generate_executable_cmakelists_txt(p));
 }
 
 static void generate_cmake_library_project(project* p) {
-
+    project_add_directory(p, generate_cmake_dir(p));
+    project_add_directory(p, generate_src_dir(p));
+    project_add_directory(p, generate_include_dir(p));
+    project_add_file(p, generate_library_cmakelists_txt(p));
 }
 
 static void write_file(void* filePointer) {
